@@ -34,7 +34,7 @@ use Software::Packager::Object;
 our @ISA = qw();
 our @EXPORT = qw();
 our @EXPORT_OK = qw();
-our $VERSION = 0.04;
+our $VERSION = 0.05;
 
 ####################
 # Functions
@@ -497,7 +497,7 @@ sub vendor
 
 =head2 B<email_contact()>
 
- $packager->email_contact('bernard@gondwana.com.au');
+ $packager->email_contact('rbdavison@cpan.org');
  my $email = $packager->email_contact();
  
  This function sets or returns the email address for the package contact.
@@ -1080,7 +1080,7 @@ __END__
 
 =head1 AUTHOR
 
- Bernard Davison <bernard@gondwana.com.au>
+ Bernard Davison <rbdavison@cpan.org>
 
 =head1 HOMEPAGE
 

@@ -81,9 +81,9 @@ $vendor eq "Gondwanatech" ? print "ok $test_number\n" : print "not ok $test_numb
 $test_number++;
 
 # test 11
-$packager->email_contact('bernard@gondwana.com.au');
+$packager->email_contact('rbdavison@cpan.org');
 my $email_contact = $packager->email_contact();
-$email_contact eq 'bernard@gondwana.com.au' ? print "ok $test_number\n" : print "not ok $test_number\n";
+$email_contact eq 'rbdavison@cpan.org' ? print "ok $test_number\n" : print "not ok $test_number\n";
 $test_number++;
 
 # test 12

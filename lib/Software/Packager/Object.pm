@@ -287,7 +287,7 @@ __END__
 
 =head1 AUTHOR
 
- R Bernard Davison <bernard@gondwana.com.au>
+ R Bernard Davison <rbdavison@cpan.org>
  If you extend this module I'd really like to see what you do with it. 
 
 =head1 COPYRIGHT

@@ -13,18 +13,19 @@ make test (optional but recommended)
 make install
 
 DESCRIPTION
-Software::Packager is a suite of Perl modules providing a common interface for
-the creation of platform specific software installation packagers.
-
 If you release software for a range of platforms then this is the module for
-you. 
+you.  Software::Packager is the base module for suite of Perl modules providing
+a common interface for the creation of platform specific software installation
+packagers.
+From version 0.05 you also need to install the Software::Packager module for
+the platform you require.
 
 This module does not do the packaging of the software but is merely a wrapper
 around the various software packaging tools already provided with various
 operating systems.
 
 AUTHOR
-R Bernard Davison <bernard@gondwana.com.au>
+R Bernard Davison <rbdavison@cpan.org>
 
 COPYRIGHT
 Copyright (c) 2001 R Bernard Davison. All rights reserved.

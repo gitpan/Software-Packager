@@ -4,7 +4,7 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
 	'NAME'		=> 'Software::Packager',
 	'VERSION_FROM'	=> 'lib/Software/Packager.pm',
-	'AUTHOR'	=> 'R Bernard Davison (bernard@gondwana.com.au)',
+	'AUTHOR'	=> 'R Bernard Davison (rbdavison@cpan.org)',
 	'ABSTRACT'	=> 'A generic interface for creating software installation packages in platform specific formats',
 	'PREREQ_PM'	=> {
 		'Archive::Tar'	=>	'0.22',
