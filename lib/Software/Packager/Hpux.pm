@@ -15,11 +15,10 @@ use Software::Packager;
 
 ####################
 # Variables
-use vars qw( @ISA @EXPORT @EXPORT_OK $VERSION );
-@ISA = qw( Software::Packager );
-@EXPORT = qw();
-@EXPORT_OK = qw();
-$VERSION = 0.01;
+our @ISA = qw( Software::Packager );
+our @EXPORT = qw();
+our @EXPORT_OK = qw();
+our $VERSION = 0.01;
 
 ####################
 # Functions

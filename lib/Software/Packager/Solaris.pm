@@ -1,10 +1,23 @@
-################################################################################
-# Name:		Software::Packager::Solaris.pm
-# Description:	This module is used to package software into SUN software
-#		packages
-# Author:	Bernard Davison
-# Contact:	bernard@gondwana.com.au
-#
+=head1 NAME
+
+Software::Packager::Solaris - Software packager for the Solaris platform.
+
+=head1 SYNOPSIS
+
+ use Software::Packager;
+ my $packager = new Software::Packager('solaris');
+
+=head1 DESCRIPTION
+
+This module is used to create software packages in a format suitable for
+installation with pkgadd.
+The process of creating packages is baised upon the document 
+Application Packaging Developer's Guide. Which can be found at
+http://docs.sun.com/ab2/@LegacyPageView?toc=SUNWab_42_2:/safedir/space3/coll1/SUNWasup/toc/PACKINSTALL:Contents;bt=Application+Packaging+Developer%27s+Guide;ps=ps/SUNWab_42_2/PACKINSTALL/Contents
+
+=head1 FUNCTIONS
+
+=cut
 
 package		Software::Packager::Solaris;
 
@@ -22,21 +35,22 @@ use Software::Packager::Object::Solaris;
 
 ####################
 # Variables
-use vars qw( @ISA @EXPORT @EXPORT_OK $VERSION );
-@ISA = qw( Software::Packager );
-@EXPORT = qw();
-@EXPORT_OK = qw();
-$VERSION = 0.01;
+our @ISA = qw( Software::Packager );
+our @EXPORT = qw();
+our @EXPORT_OK = qw();
+our $VERSION = 0.01;
 
 ####################
 # Functions
 
 ################################################################################
 # Function:	new()
-# Description:	This function creates and returns a new Packager object.
-# Arguments:	none.
-# Return:	new Packager object.
-#
+
+=head1 B<new()>
+
+This method creates and returns a new Software::Packager::Solaris object.
+
+=cut
 sub new
 {
 	my $class = shift;
@@ -47,12 +61,14 @@ sub new
 
 ################################################################################
 # Function:	add_item()
-# Description:	This function over rides the add_item function in the
-#		Software::Packager module. this function adds a new object the
-#		package
-# Arguments:	hash of object data.
-# Return:	true if okay else undef
-#
+
+=head1 B<add_item()>
+
+$packager->add_item(%object_data);
+This method overrides the add_item function in the Software::Packager module.
+This method adds a new object to the package.
+
+=cut
 sub add_item
 {
 	my $self = shift;
@@ -69,64 +85,73 @@ sub add_item
 }
 
 ################################################################################
-# Function:	package_name()
-# Description:	This function sets the package name and overrides the
-#		package_name function in Software::Packager.pm
-# Arguments:	name.
-# Return:	package name if nothing passed.
-#
-sub package_name
+# Function:	_package_name()
+
+=head2 B<_package_name()>
+
+This method overrides the _package_name method in Software::Packager.
+It is used to truncate the package name if it is longer than 9 charaters and
+return it.
+
+=cut
+sub _package_name
 {
 	my $self = shift;
-	my $value = shift;
-
-	return $self->{'PACKAGE_NAME'} unless $value;
-	if (length $value gt 9)
+	my $name =  $self->{'PACKAGE_NAME'};
+	if (length $name > 9)
 	{
-		print "Error: Package name is to long.\n";
+		my $new_name = sprintf ("%.9s", $name);
+		warn "Warning: Package name is to long. Truncating to $new_name\n";
+		return $new_name;
 	}
-	$self->{'PACKAGE_NAME'} = $value;
-	return 1;
+	else
+	{
+		return $self->{'PACKAGE_NAME'};
+	}
 }
 
 ################################################################################
 # Function:	package()
-# Description:	This function finalises the creation of the package.
-# Arguments:	none.
-# Return:	true if ok else undef.
-#
+
+=head2 B<package()>
+
+$packager->packager();
+This method overrides the base API in Software::Packager, it controls the
+process if package creation.
+
+=cut
 sub package
 {
 	my $self = shift;
 
 	# setup the tmp structure
-	return undef unless $self->setup_in_tmp();
+	return undef unless $self->_setup_in_tmp();
 
 	# Create the package
-	return undef unless $self->create_package();
+	return undef unless $self->_create_package();
 
 	# remove tmp structure
-	return undef unless $self->remove_tmp();
+	return undef unless $self->_remove_tmp();
 
 	return 1;
 }
 
 ################################################################################
-# Function:	setup_in_tmp()
+# Function:	_setup_in_tmp()
 # Description:	This function sets up the temporary structure for the package.
 # Arguments:	none.
 # Return:	true if ok else undef.
 #
-sub setup_in_tmp
+sub _setup_in_tmp
 {
 	my $self = shift;
 	my $tmp_dir = $self->tmp_dir();
-	my $verbose = $self->verbose();
-
-	print "Creating temporary package structure\n" if $verbose;
 
 	# process directories
-	return undef unless mkpath($tmp_dir, $verbose, 0777);
+	unless (-d $tmp_dir)
+	{
+		return undef unless mkpath($tmp_dir, 0, 0777);
+	}
 
 	# process files
 	if ($self->license_file())
@@ -143,56 +168,49 @@ sub setup_in_tmp
 # Arguments:	none.
 # Return:	true if ok else undef.
 #
-sub create_package
+sub _create_package
 {
 	my $self = shift;
-	my $verbose = $self->verbose();
-
-	print "Starting Package creation\n" if $verbose;
 
 	# create the prototype file
-	return undef unless $self->create_prototype();
+	return undef unless $self->_create_prototype();
 
 	# create the pkginfo file
-	return undef unless $self->create_pkginfo();
+	return undef unless $self->_create_pkginfo();
 
 	# make the package
-	return undef unless $self->create_pkgmk();
+	return undef unless $self->_create_pkgmk();
 
 	return 1;
 }
 
 ################################################################################
-# Function:	remove_tmp()
+# Function:	_remove_tmp()
 # Description:	This function removes the temporary structure for the package.
 # Arguments:	none.
 # Return:	true if ok else undef.
 #
-sub remove_tmp
+sub _remove_tmp
 {
 	my $self = shift;
 	my $tmp_dir = $self->tmp_dir();
-	my $verbose = $self->verbose();
 
-	print "Removing temporary package structure\n" if $verbose;
 	return undef unless system("chmod -R 0777 $tmp_dir") eq 0;
-	rmtree($tmp_dir, $verbose, 1);
+	rmtree($tmp_dir, 0, 1);
 	return 1;
 }
 
 ################################################################################
-# Function:	create_prototype()
+# Function:	_create_prototype()
 # Description:	This function create the prototype file
 # Arguments:	none.
 # Return:	true if ok else undef.
 #
-sub create_prototype
+sub _create_prototype
 {
 	my $self = shift;
 	my $tmp_dir = $self->tmp_dir();
-	my $verbose = $self->verbose();
 
-	print "Creating prototype file\n" if $verbose;
 	my $protofile = new FileHandle() or return undef;
 	return undef unless $protofile->open(">$tmp_dir/prototype");
 
@@ -220,24 +238,20 @@ sub create_prototype
 	}
 
 	return undef unless $protofile->close();
-	print "Finished creating prototype file\n" if $verbose;
-
 	return 1;
 }
 
 ################################################################################
-# Function:	create_pkginfo()
+# Function:	_create_pkginfo()
 # Description:	This function creates the pkginfo file
 # Arguments:	none.
 # Return:	true if ok else undef.
 #
-sub create_pkginfo
+sub _create_pkginfo
 {
 	my $self = shift;
 	my $tmp_dir = $self->tmp_dir();
-	my $verbose = $self->verbose();
 
-	print "Creating pkginfo file\n" if $verbose;
 	my $protofile = new FileHandle() or return undef;
 	return undef unless $protofile->open(">$tmp_dir/pkginfo");
 	return undef unless $protofile->print("PKG=\"", $self->package_name(), "\"\n");
@@ -251,40 +265,60 @@ sub create_pkginfo
 	return undef unless $protofile->print("BASEDIR=\"", $self->install_dir(), "\"\n");
 	return undef unless $protofile->print("CLASSES=\"none\"\n");
 	return undef unless $protofile->close();
-	print "Finished creating pkginfo file\n" if $verbose;
 
 	return 1;
 }
 
 ################################################################################
-# Function:	create_package()
+# Function:	_create_package()
 # Description:	This function creates the package and puts it in the output
 #		directory
 # Arguments:	none.
 # Return:	true if ok else undef.
 #
-sub create_pkgmk
+sub _create_pkgmk
 {
 	my $self = shift;
 	my $tmp_dir = $self->tmp_dir();
 	my $output_dir = $self->output_dir();
-	my $verbose = $self->verbose();
 	my $name = $self->package_name();
 
-	print "Creating package\n" if $verbose;
-	mkpath($output_dir, $verbose, 0777);
+	unless (-d $output_dir)
+	{
+		return undef unless mkpath($output_dir, 0, 0777);
+	}
 
 	return undef unless system("pkgmk -r / -f $tmp_dir/prototype ") eq 0;
 	return undef unless system("pkgtrans -s /var/spool/pkg $output_dir/$name $name") eq 0;
 
 	# clean up our neat mess.
 	return undef unless system("chmod -R 0700 /var/spool/pkg/$name") eq 0;
-	rmtree("/var/spool/pkg/$name", $verbose, 1);
-
-	print "Finished creating package\n" if $verbose;
+	rmtree("/var/spool/pkg/$name", 0, 1);
 
 	return 1;
 }
 
 1;
 __END__
+
+=head1 SEE ALSO
+
+Software::Packager
+Software::Packager::Object::Solaris
+
+=head1 AUTHOR
+
+R Bernard Davison <rbdavison@cpan.org>
+
+=head1 HOMEPAGE
+
+http://bernard.gondwana.com.au
+
+=head1 COPYRIGHT
+
+Copyright (c) 2001 Gondwanatech. All rights reserved.
+This program is free software; you can redistribute it and/or modify it under
+the same terms as Perl itself.
+
+=cut
+

@@ -1,7 +1,21 @@
 # t/02_tar.t; load Software::Packager and create a Tar package.
 
 $|++; 
-print "1..19\n";
+
+my $load_module = "require Archive::Tar;\n";
+$load_module .= "import Archive::Tar;\n";
+eval $load_module;
+
+if ($@)
+{
+	print "1..0\n";
+	warn "Module Archive::Tar not found. ";
+	exit 0;
+}
+else
+{
+	print "1..19\n";
+}
 my $test_number = 1;
 use Software::Packager;
 use Cwd;

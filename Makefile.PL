@@ -9,9 +9,4 @@ WriteMakefile(
 	'PREREQ_PM'	=> {
 		'Archive::Tar'	=>	'0.22',
 		},
-	'dist'		=> {
-		'COMPRESS'	=>	'gzip -9',
-		'SUFFIX'	=>	'.gz',
-		'DIST_DEFAULT'	=>	'all tardist',
-		},
 );

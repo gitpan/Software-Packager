@@ -31,11 +31,10 @@ use Software::Packager::Object;
 
 ####################
 # Variables
-use vars qw( @ISA @EXPORT @EXPORT_OK $VERSION );
 our @ISA = qw();
 our @EXPORT = qw();
 our @EXPORT_OK = qw();
-our $VERSION = 0.03;
+our $VERSION = 0.04;
 
 ####################
 # Functions
@@ -97,7 +96,7 @@ sub new
 	# do some initalisation
 	$packager->{'PACKAGE_VERSION'} = 0.0.0.0.0.0;
 	$packager->{'DESCRIPTION'} = "This software installation package has been created with Software::Packager version $VERSION\n";
-	$packager->{'OUTPUT_DIR'} = "$ENV{'TMP'}/Software-Packager";
+	$packager->{'OUTPUT_DIR'} = ".";
 
 	return $packager;
 }
@@ -194,6 +193,34 @@ sub package_name
 }
 
 ################################################################################
+# Function:	program_name()
+
+=head2 B<program_name()>
+
+ $packager->program_name('Software Packager');
+ my $program_name = $packager->program_name();
+
+ This method is used to set the name of the program that the package is
+ installing. This may in some cases be the same as the package name but that is 
+ not required.
+
+=cut
+sub program_name
+{
+	my $self = shift;
+	my $value = shift;
+
+	if ($value)
+	{
+		$self->{'PROGRAM_NAME'} = $value;
+	}
+	else
+	{
+		return $self->_program_name();
+	}
+}
+
+################################################################################
 # Function:	description()
 
 =head2 B<description()>
@@ -248,10 +275,16 @@ sub description
 sub output_dir
 {
 	my $self = shift;
-	my $dir = shift;
+	my $value = shift;
 
-	return $self->{'OUTPUT_DIR'} unless $dir;
-	$self->{'OUTPUT_DIR'} = $dir;
+	if ($value)
+	{
+		$self->{'OUTPUT_DIR'} = $value;
+	}
+	else
+	{
+		return $self->{'OUTPUT_DIR'};
+	}
 }
 
 ################################################################################
@@ -732,22 +765,6 @@ sub license_file
 }
 
 ################################################################################
-# Function:	program_name()
-# Description:	This function returns or sets the name for the program
-# Arguments:	$name
-# Return:	sets $name to passed value else $name
-#
-sub program_name
-{
-	my $self = shift;
-	my $value = shift;
-
-	return $self->{'PROGRAM_NAME'} unless $value;
-	$self->{'PROGRAM_NAME'} = $value;
-	return 1;
-}
-
-################################################################################
 # Function:	get_object_list()
 # Description:	This function returns the list of objects to be packaged.
 # Arguments:	none.
@@ -879,6 +896,21 @@ sub _test_file
 =cut
 
 ################################################################################
+# Function:     package()
+ 
+=head2 B<package()>
+
+ This method forms part of the base API it should be overriden by sub classes
+ of Software::Packager
+
+=cut
+sub package    
+{       
+        my $self = shift;
+	print "The base API for this module has not been implemented.\n";
+}       
+
+################################################################################
 # Function:	_version()
 
 =head2 B<_version()>
@@ -1004,6 +1036,20 @@ sub _tmp_dir
 }
 
 ################################################################################
+# Function:	_program_name()
+
+=head2 B<_program_name()>
+
+ This method is used to format the program name and return it.
+
+=cut
+sub _program_name
+{
+	my $self = shift;
+	return $self->{'PROGRAM_NAME'};
+}
+
+################################################################################
 # Function:	_check_tmp_dir()
 
 =head2 B<_check_tmp_dir()>
@@ -1017,7 +1063,11 @@ sub _check_tmp_dir
 {
 	my $self = shift;
 	my $value = shift;
-	return undef if -e $value;
+	if (-e $value)
+	{
+		warn "Error: The temporary build directory \"$value\" exists. It is not possible to continue. Please remove this directory and try again.\n";
+		return undef;
+	}
 	return 1;
 }
 

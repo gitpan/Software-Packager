@@ -26,14 +26,14 @@ use strict;
 use File::Path;
 # Custom modules
 use Software::Packager;
+use Software::Packager::Object::Aix;
 
 ####################
 # Variables
-use vars qw( @ISA @EXPORT @EXPORT_OK $VERSION );
-@ISA = qw( Software::Packager );
-@EXPORT = qw();
-@EXPORT_OK = qw();
-$VERSION = 0.01;
+our @ISA = qw( Software::Packager );
+our @EXPORT = qw();
+our @EXPORT_OK = qw();
+our $VERSION = 0.01;
 
 ####################
 # Functions
@@ -53,6 +53,30 @@ sub new
 }
 
 ################################################################################
+# Function:	add_item()
+
+=head2 B<add_item()>
+
+ The method overrides the add_item method of Software::Packager to use
+ Software::Packager::Object::Aix.
+ See Software::Packager for more details on this method.
+
+=cut
+sub add_item
+{
+	my $self = shift;
+	my %data = @_;
+	my $object = new Software::Packager::Object::Aix(%data);
+
+	return undef unless $object;
+
+	# check that the object has a unique destination
+	return undef if $self->{'OBJECTS'}->{$object->destination()};
+
+	$self->{'OBJECTS'}->{$object->destination()} = $object;
+}
+
+################################################################################
 # Function:	package()
 # Description:	This function finalises the creation of the package.
 # Arguments:	none.
@@ -62,9 +86,71 @@ sub package
 {
 	my $self = shift;
 
-	return undef unless $self->setup();
-	return undef unless $self->cleanup();
+	unless ($self->setup())
+	{
+		warn "Error: Problems were encountered in the setup phase\n";
+		return undef;
+	}
+	unless ($self->cleanup())
+	{
+		warn "Error: Problems were encountered in the cleanup phase\n";
+		return undef;
+	}
 	return 1;
+}
+
+################################################################################
+# Function:	_find_lpp_type()
+
+=head2 B<_find_lpp_type()>
+
+ This method finds the type of LPP we are building.
+ If all components are under /usr/share then the part is a SHARE package.
+ If all components are under /usr then the part is a USER package.
+ If components are under any other directory then the part is a ROOT+USER package.
+
+ ROOT only parts are not permitted.
+ SHARE + ROOT and or USER parts are not permitted.
+
+ Returns the LPP code for the part type on success and undef if there are
+ errors.
+ a USER part will return U
+ a ROOT+USER part will return B
+ a SHARE part will return H
+
+=cut
+sub _find_lpp_type
+{
+	my $self = shift;
+	my $share = 0;
+	my $user = 0;
+	my $root = 0;
+
+	foreach my $object ($self->get_object_list())
+	{
+		if ($object->lpp_type_is_share()){ $share++; next;};
+		if ($object->lpp_type_is_user()){ $user++; next;};
+		if ($object->lpp_type_is_root()){ $root++; next;};
+	}
+
+	if ($share and $user)
+	{
+		warn "Error: Packages with SHARE and USER parts are not permitted.\n";
+		return undef;
+	}
+	elsif ($share and $root)
+	{
+		warn "Error: Packages with SHARE and ROOT parts are not permitted.\n";
+		return undef;
+	}
+	elsif ($root) { return 'B'; }
+	elsif ($user) { return 'U'; }
+	elsif ($share) { return 'H'; }
+	else
+	{
+		warn "Error: Package type could not be determined.\n";
+		return undef;
+	}
 }
 
 ################################################################################

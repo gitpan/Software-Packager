@@ -1,9 +1,18 @@
-################################################################################
-# Name:		Software::Packager::Darwin.pm
-# Description:	This module is used to package software into MacOSX bundles
-# Author:	Bernard Davison
-# Contact:	bernard@gondwana.com.au
-#
+=head1 NAME
+
+ Software::Packager::Darwin
+
+=head1 DESCRIPTION
+
+ This module is a sub class of Software::Packager. It is used to create MacOS X
+ software packages for installation using the Installer application.
+
+ Note: I haven't managed to find to much information on the full format of 
+ MacOS X packages so this module trys to mimic what the PackageMaker.app 
+ program does and what is contains in packages from Apple. presumably they are
+ using many of the features that PackageMaker doesn't provide.
+
+=cut
 
 package		Software::Packager::Darwin;
 
@@ -14,17 +23,15 @@ use File::Copy;
 use File::Path;
 use File::Basename;
 use FileHandle 2.0;
-use Data::Dumper;
 # Custom modules
 use Software::Packager;
 
 ####################
 # Variables
-use vars qw( @ISA @EXPORT @EXPORT_OK $VERSION );
-@ISA = qw( Software::Packager );
-@EXPORT = qw();
-@EXPORT_OK = qw();
-$VERSION = 0.01;
+our @ISA = qw( Software::Packager );
+our @EXPORT = qw();
+our @EXPORT_OK = qw();
+our $VERSION = 0.01;
 
 ####################
 # Functions
@@ -45,94 +52,141 @@ sub new
 
 ################################################################################
 # Function:	package()
-# Description:	This function finalises the creation of the package.
-# Arguments:	none.
-# Return:	true if ok else undef.
-#
+
+=head2 B<package()>
+
+ This method overrides the base API from Software::Packager. This method does
+ all the dirty work of creating the software package for MacOS X.
+
+=cut
 sub package
 {
 	my $self = shift;
 
 	# setup the tmp structure
-	return undef unless $self->setup_in_tmp();
+	unless ($self->setup())
+	{
+		warn "Error: Problems were encountered in the setup phase.\n";
+		return undef;
+	}
 
 	# create the pax file
-	return undef unless $self->create_package();
+	unless ($self->create_package())
+	{
+		warn "Error: Problems were encountered in the package creation phase.\n";
+		return undef;
+	}
 
 	# remove tmp structure
-	return undef unless $self->remove_tmp();
+	unless ($self->cleanup())
+	{
+		warn "Error: Problems were encountered in the cleanup phase.\n";
+		return undef;
+	}
 
 	return 1;
 }
 
 ################################################################################
-# Function:	setup_in_tmp()
-# Description:	This function sets up the temporary structure for the package.
-# Arguments:	none.
-# Return:	true if ok else undef.
-#
-sub setup_in_tmp
+# Function:	setup()
+
+=head2 B<setup()>
+
+ This method creates the temporary package structure in preparation for the
+ package creation phase
+
+=cut
+sub setup
 {
 	my $self = shift;
-	my $verbose = $self->verbose();
-
-	print "Creating temporary package structure\n" if $verbose;
 
 	# process directories
-	return undef unless $self->process_directories();
+	unless ($self->process_directories())
+	{
+		warn "Error: Processing of the directory objects failed.\n";
+		return undef;
+	}
 
 	# process files
-	return undef unless $self->process_files();
+	unless ($self->process_files())
+	{
+		warn "Error: Processing of the file objects failed.\n";
+		return undef;
+	}
 
 	# process links
-	return undef unless $self->process_links();
+	unless ($self->process_links())
+	{
+		warn "Error: Processing of the link objects failed.\n";
+		return undef;
+	}
 
 	# set permissions
-	return undef unless $self->set_permissions();
+	unless ($self->set_permissions())
+	{
+		warn "Error: Processing of permissions failed.\n";
+		return undef;
+	}
 
 	return 1;
 }
 
 ################################################################################
-# Function:	remove_tmp()
-# Description:	This function removes the temporary structure for the package.
-# Arguments:	none.
-# Return:	true if ok else undef.
-#
-sub remove_tmp
+# Function:	cleanup()
+
+=head2 B<cleanup()>
+
+ This method cleans up anything we have created but don't need.
+
+=cut
+sub cleanup
 {
 	my $self = shift;
 	my $tmp_dir = $self->tmp_dir();
-	my $verbose = $self->verbose();
+	my $output_dir = $self->output_dir();
+	my $package_name = $self->package_name();
 
-	print "Removing temporary package structure\n" if $verbose;
-	return undef unless system("chmod -R 0700 $tmp_dir") eq 0;
-	rmtree($tmp_dir, $verbose, 1);
+	unless (system("chmod -R 0700 $tmp_dir") eq 0)
+	{
+		warn "Error: Problems were experienced changing the permissions.\n";
+		return undef;
+	}
+	
+	rmtree($tmp_dir, 1, 1);
+	unlink "$output_dir/$package_name.info";
 	return 1;
 }
 
 ################################################################################
 # Function:	create_package()
-# Description:	This function creates the pax file
-# Arguments:	none.
-# Return:	true if ok else undef.
-#
+
+=head2 B<create_package()>
+
+This function creates the .pkg package directory and all the associated files.
+
+=cut
 sub create_package
 {
 	my $self = shift;
 	my $tmp_dir = $self->tmp_dir();
 	my $output_dir = $self->output_dir();
 	my $name = $self->package_name();
-	my $icon = $self->icon();
-	my $verbose = $self->verbose();
-
-	print "Creating package.\n" if $verbose;
+	my $icon = " ";
+	$icon .= $self->icon() if $self->icon();
 
 	# Create the package.info file
-	return undef unless $self->create_package_info();
+	unless ($self->create_package_info())
+	{
+		warn "Error: Problems were encountered creating the .info file.\n";
+		return undef;
+	}
 
 	# Create the package
-	return undef unless system("package $tmp_dir $output_dir/$name.info $icon -d $output_dir") eq 0;
+	unless (system("package $tmp_dir $output_dir/$name.info $icon -d $output_dir") eq 0)
+	{
+		warn "Error: Problems were encountered running package.\n";
+		return undef;
+	}
 
 	# copy the pre and post scripts into the package
 	copy($self->pre_install_script(), "$output_dir/$name.pkg/$name.pre_install") if $self->pre_install_script();
@@ -154,24 +208,22 @@ sub create_package
 	copy($self->license_file(), "$output_dir/$name.pkg/License.rtf") if $self->license_file();
 	chmod 0444, "$output_dir/$name.pkg/License.rtf";
 		
-	print "Package creation complete.\n" if $verbose;
 	return 1;
 }
 
 ################################################################################
 # Function:	create_package_info()
-# Description:	This function creates the package.info file for the package.
-# Arguments:	none.
-# Return:	true if ok else undef.
-# TODO:		This function needs to be finished. (more functions need to be 
-#		added to Packager.pm
-#
+
+=head2 B<create_package_info()>
+
+ This method creates the package.info file for the package
+
+=cut
 sub create_package_info
 {
 	my $self = shift;
 	my $output_dir = $self->output_dir();
 	my $name = $self->package_name();
-	my $verbose = $self->verbose();
 
 	# open a file handle on the file
 	my $fh = new FileHandle();
@@ -212,25 +264,23 @@ sub process_directories
 {
 	my $self = shift;
 	my $tmp_dir = $self->tmp_dir();
-	my $verbose = $self->verbose();
 	my $output_dir = $self->output_dir();
 	my $name = $self->package_name();
 
-	print "Processing Directories\n" if $verbose;
-
 	# create the tmp processing directory
-	return undef unless mkpath($tmp_dir, $verbose, 0777);
+	mkpath($tmp_dir, 1, 0777);
 
 	foreach my $object ($self->get_directory_objects())
 	{
-	    my $destination = $object->destination();
-	    return undef unless mkpath("$tmp_dir/$destination", $verbose, 0777);
+		my $destination = $object->destination();
+		mkpath("$tmp_dir/$destination", 1, 0777);
 	}
 
 	# Create the output directory for the package
-	return undef unless mkpath("$output_dir/$name.pkg", $verbose, 0777);
-
-	print "Finished Processing Directories\n\n" if $verbose;
+	unless (-d $output_dir)
+	{
+		mkpath("$output_dir", 1, 0777);
+	}
 
 	return 1;
 }
@@ -245,9 +295,6 @@ sub process_files
 {
 	my $self = shift;
 	my $tmp_dir = $self->tmp_dir();
-	my $verbose = $self->verbose();
-
-	print "Processing Files\n" if $verbose;
 
 	foreach my $object ($self->get_file_objects())
 	{
@@ -258,14 +305,11 @@ sub process_files
 	    my $directory = dirname("$tmp_dir/$destination");
 	    unless (-d $directory)
 	    {
-		return undef unless mkpath($directory, $verbose, 0777);
+		return undef unless mkpath($directory, 1, 0777);
 	    }
 
-	    print "Coping $source to $tmp_dir/$destination\n" if $verbose;
 	    return undef unless copy($source, "$tmp_dir/$destination");
 	}
-
-	print "Finished Processing Files\n\n" if $verbose;
 
 	return 1;
 }
@@ -280,9 +324,6 @@ sub process_links
 {
 	my $self = shift;
 	my $tmp_dir = $self->tmp_dir();
-	my $verbose = $self->verbose();
-
-	print "Processing Links\n" if $verbose;
 
 	foreach my $object ($self->get_link_objects())
 	{
@@ -292,19 +333,17 @@ sub process_links
 
 	    if ($type eq 'softlink')
 	    {
-		print "Creating soft link from $source to $tmp_dir/$destination\n" if $verbose;
 		unless (symlink $source, "$tmp_dir/$destination")
 		{
-		    print "Error: Could not create soft link from $source to $tmp_dir/$destination:\n$!\n" if $verbose;
+		    warn "Error: Could not create soft link from $source to $tmp_dir/$destination:\n$!\n";
 		    return undef;
 		}
 	    }
 	    elsif ($type eq 'hardlink')
 	    {
-		print "Creating hard link from $source to $tmp_dir/$destination\n" if $verbose;
 		unless (link $source, "$tmp_dir/$destination")
 		{
-		    print "Error: Could not create hard link from $source to $tmp_dir/$destination:\n$!\n" if $verbose;
+		    warn "Error: Could not create hard link from $source to $tmp_dir/$destination:\n$!\n";
 		    return undef;
 		}
 	    }
@@ -312,8 +351,6 @@ sub process_links
 	    {
 	    }
 	}
-
-	print "Finished Processing Links\n\n" if $verbose;
 
 	return 1;
 }
@@ -328,38 +365,48 @@ sub set_permissions
 {
 	my $self = shift;
 	my $tmp_dir = $self->tmp_dir();
-	my $verbose = $self->verbose();
-
-	print "Setting Permissions\n" if $verbose;
 
 	foreach my $object ($self->get_directory_objects(), $self->get_file_objects())
 	{
 	    my $destination = $object->destination();
-	    my $mode = $object->mode();
+	    my $mode = oct($object->mode());
 	    my $user = $object->user();
 	    my $group = $object->group();
 	    my $user_num = $user =~ /\d+/ ? $user : getpwnam($user);
 	    my $group_num = $group =~ /\d+/ ? $group : getgrnam($group);
 
-	    print "Changing user and group to $user_num:$group_num on $tmp_dir/$destination\n" if $verbose;
 	    unless (chown($user_num, $group_num, "$tmp_dir/$destination"))
 	    {
-		print "Error: Could not change owner or group:\n$!\n" if $verbose;
+		warn "Error: Could not change owner or group:\n$!\n";
 		return undef;
 	    }
 
-	    print "Changing mode to $mode on $tmp_dir/$destination\n" if $verbose;
-	    unless (chmod $object->mode(), "$tmp_dir/$destination")
+	    unless (chmod $mode, "$tmp_dir/$destination")
 	    {
-		print "Error: Could not change owner or group:\n$!\n" if $verbose;
+		warn "Error: Could not change owner or group:\n$!\n";
 		return undef;
 	    }
 	}
-
-	print "Finished setting Permissions\n\n" if $verbose;
 
 	return 1;
 }
 
 1;
 __END__
+
+=head1 SEE ALSO
+
+ Software::Packager
+
+=head1 AUTHOR
+
+ R Bernard Davison <bernard@gondwana.com.au>
+
+=head1 COPYRIGHT
+
+ Copyright (c) 2001 Gondwanatech. All rights reserved.
+ This program is free software; you can redistribute it and/or modify it under
+ the same terms as Perl itself.
+
+=cut
+

@@ -61,7 +61,7 @@ use strict;
 our @ISA = qw();
 our @EXPORT = qw();
 our @EXPORT_OK = qw();
-our $VERSION = 0.01;
+our $VERSION = 0.03;
 
 ####################
 # Functions
@@ -126,11 +126,20 @@ sub _check_data
 	$self->{'TYPE'} = lc $self->{'TYPE'};
 	if ($self->{'TYPE'} eq 'file')
 	{
-	    return undef unless -f $self->{'SOURCE'};
+		unless (-f $self->{'SOURCE'})
+		{
+			warn "Error: The value for SOURCE is not set! This is a required value for file obejcts.\n";
+			return undef;
+		}
 	}
 	elsif ($self->{'TYPE'} =~ /link/)
 	{
-	    return undef unless $self->{'SOURCE'} and $self->{'DESTINATION'};
+		unless ($self->{'SOURCE'} and $self->{'DESTINATION'})
+		{
+			warn "Error: Either SOURCE of DESTINATION are not set! both are required for link objects.\n";
+			warn "Error: SOURCE=\"$self->{'SOURCE'}\" DESTINATION=\"$self->{'DESTINATION'}\"\n";
+			return undef;
+		}
 	}
 
 	unless ($self->{'MODE'})
