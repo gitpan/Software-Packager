@@ -6,6 +6,33 @@ Software::Packager - Common software packaging interface
 
  use Software::Packager;
  my $packager = new Software::Packager();
+ $packager->version('1.2.3.4.5.6');
+ $packager->package_name("Somename");
+ $packager->program_name('Software Packager');
+ $packager->description("This is the description.");
+ $packager->short_description("This is a short description.");
+ $packager->output_dir("/home/software/packages");
+ $packager->category("Applications");
+ $packager->architecture("sparc");
+
+ my %object_data = (
+    'SOURCE' => '/source/file1',
+    'TYPE' => 'file',
+    'DESTINATION' => '/usr/local/file1',
+    'USER' => 'joe',
+    'GROUP' => 'staff',
+    'MODE' => '0750',
+    );
+ $packager->add_item(%object_data);
+
+ my $version = $packager->version();
+ my $name = $packager->package_name();
+ my $program_name = $packager->program_name();
+ my $description = $packager->description();
+ my $description = $packager->short_description();
+ my $output_directory = $packager->output_dir();
+ my $category = $packager->category();
+ my $arch = $packager->architecture();
 
 =head1 DESCRIPTION
 
@@ -40,7 +67,7 @@ use vars qw(@ISA @EXPORT @EXPORT_OK $VERSION);
 @ISA = qw();
 @EXPORT = qw();
 @EXPORT_OK = qw();
-$VERSION = 0.07;
+$VERSION = 0.09;
 
 ####################
 # Functions
@@ -97,12 +124,19 @@ sub new
         my $load_module = "require Software::Packager::$type;\n";
         $load_module .= '$packager' . " = new Software::Packager::$type();\n";
         eval $load_module;
-        die $@ if $@;
+        if ($@)
+	{
+		warn "$@\n";
+		warn "Error: Failed to load Software::Packager::$type\n";
+		warn "       Using Software::Packager::Tar\n";
+        	require Software::Packager::Tar;
+        	$packager = new Software::Packager::Tar();
+	}
 
 	# do some initalisation
-	$packager->{'PACKAGE_VERSION'} = 0.0.0.0.0.0;
-	$packager->{'DESCRIPTION'} = "This software installation package has been created with Software::Packager version $VERSION\n";
-	$packager->{'OUTPUT_DIR'} = ".";
+	$packager->version('0.0.0.0');
+	$packager->description("This software installation package has been created with Software::Packager version $VERSION\n");
+	$packager->output_dir(".");
 
 	return $packager;
 }
@@ -112,7 +146,7 @@ sub new
 
 =head2 B<version()>
 
- $packager->version(1.2.3.4.5.6);
+ $packager->version('1.2.3.4.5.6');
  my $version = $packager->version();
 
 This function sets the version for the package to the passed value. If no value
@@ -135,7 +169,7 @@ without any arguments to see what is returned.
 
 Example: If we are on AIX, which has a four part version we would get...
 
- $packager->version(10.2.1);
+ $packager->version('10.2.1');
  my $version = $packager->version();
  print "VERSION: $version\n";
  ...
@@ -164,7 +198,7 @@ sub version
 	{
 		if ($value !~ /\d/)
 		{
-			warn "Warning: The version specified does not contain any numbers.\n";
+			warn "Warning: The version specified \"$value\" does not contain any numbers.\n";
 		}
 		$self->{'PACKAGE_VERSION'} = $value;
 	}
@@ -427,9 +461,21 @@ module Software::Packager::Object. The documentation for this module should be
 consulted if a more detailed explanation of these arguments is required.
  
  Required arguments:
- TYPE		The type can be File, Softlink, Hardlink or Directory.
- 		If the type is set to File then the SOURCE value must be a real
-		file.
+ TYPE		The type is case insensitive and can be one of:
+ 	File		A standard file.
+	Directory	A directory.
+	Softlink	A symbolic link.
+	Hardlink	A file link.
+	Config		A configuration file.
+	Volatile	A volatile file.
+	Install		An installation file used by the installer.
+	InstallDir	A directory to be used by the installer then deleted.
+	Pipe		A named pipe.
+	Block		A block special device.
+	Charater	A Charater special device.
+	
+ 	If the type is set to File, Install or Config then the SOURCE value must
+	be a real file.
 		If the type is a link then both the SOURCE and DESTINATION must
 		be present.
  SOURCE		This is the source file to add to the package.
@@ -451,7 +497,11 @@ sub add_item
 	return undef unless $object;
 
 	# check that the object has a unique destination
-	return undef if $self->{'OBJECTS'}->{$object->destination()};
+	if ($self->{'OBJECTS'}->{$object->destination()})
+	{
+		warn "Error: An object with a destination of \"". $object->destination() ."\" has already been added to the package.\n ";
+		return undef;
+	}
 
 	$self->{'OBJECTS'}->{$object->destination()} = $object;
 }
@@ -645,8 +695,8 @@ sub tmp_dir
         {
 		while (-e $value)
 		{
-			warn "Error: The temporary build directory \"$value\" exists.\n";
-			warn "       appending /tmp to the name ad trying again.\n";
+			warn "Warning: The temporary build directory \"$value\" exists.\n";
+			warn "         appending /tmp to the name ad trying again.\n";
 			$value .= "/tmp";
 		}
 		$self->{'TMP_BUILD_DIR'} = $value;
@@ -912,7 +962,11 @@ sub get_object_list
 {
 	my $self = shift;
 
-	my @destinations = keys %{$self->{'OBJECTS'}};
+	my @destinations;
+	foreach my $key (keys %{$self->{'OBJECTS'}})
+	{
+		push @destinations, $self->{'OBJECTS'}->{$key}->destination();
+	}
 	@destinations = sort @destinations;
 
 	my @sorted_objects;
@@ -921,8 +975,11 @@ sub get_object_list
 	    foreach my $key (keys %{$self->{'OBJECTS'}})
 	    {
 		my $object = $self->{'OBJECTS'}->{$key};
-		push @sorted_objects, $object if $object->destination() eq $destination;
-		last if $object->destination() eq $destination;
+		if ($object->destination() eq $destination)
+		{
+			push @sorted_objects, $object;
+			last;
+		}
 	    }
 	}
 
@@ -944,7 +1001,8 @@ sub get_objects_matching
 	my @objects;
 	foreach my $object ($self->get_object_list())
 	{
-	    push @objects, $object if $object->get_value($query) eq $value;
+	    my $function = lc $query;
+	    push @objects, $object if $object->$function() eq $value;
 	}
 
 	return @objects;
@@ -963,7 +1021,7 @@ sub get_directory_objects
 	my @objects;
 	foreach my $object ($self->get_object_list())
 	{
-		push @objects, $object if $object->type() eq 'directory';
+		push @objects, $object if $object->type() =~ /^directory$/i;
 	}
 
 	return @objects;
@@ -982,7 +1040,7 @@ sub get_file_objects
 	my @objects;
 	foreach my $object ($self->get_object_list())
 	{
-		push @objects, $object if $object->type() eq 'file';
+		push @objects, $object if $object->type() =~ /^file$/i;
 	}
 
 	return @objects;
@@ -1001,7 +1059,7 @@ sub get_link_objects
 	my @objects;
 	foreach my $object ($self->get_object_list())
 	{
-		push @objects, $object if $object->type() =~ /link/;
+		push @objects, $object if $object->type() =~ /link/i;
 	}
 
 	return @objects;

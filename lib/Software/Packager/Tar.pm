@@ -27,7 +27,6 @@ use File::Copy;
 use File::Find;
 use File::Basename;
 use Cwd;
-use Data::Dumper;
 # Custom modules
 use Software::Packager;
 
@@ -245,7 +244,7 @@ sub cleanup
 	my $tmp_dir = $self->tmp_dir();
 
 	# there has to be a better way to to this!
-	return undef unless system("chmod -R 0777 $tmp_dir") eq 0;
+	system("chmod -R 0777 $tmp_dir");
 	rmtree($tmp_dir, 0, 0);
 	return 1;
 }

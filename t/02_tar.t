@@ -135,6 +135,8 @@ $package_file .= "/" . $packager->package_name();
 $package_file .= ".tar";
 print_status(-f $package_file);
 
+unlink "TarTestPackage-1.0.0.tar";
+
 ####################
 # Functions to use
 sub same
