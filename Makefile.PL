@@ -1,0 +1,17 @@
+use ExtUtils::MakeMaker;
+# See lib/ExtUtils/MakeMaker.pm for details of how to influence
+# the contents of the Makefile that is written.
+WriteMakefile(
+	'NAME'		=> 'Software::Packager',
+	'VERSION_FROM'	=> 'lib/Software/Packager.pm',
+	'AUTHOR'	=> 'R Bernard Davison (bernard@gondwana.com.au)',
+	'ABSTRACT'	=> 'A generic interface for creating software installation packages in platform specific formats',
+	'PREREQ_PM'	=> {
+		'Archive::Tar'	=>	'0.22',
+		},
+	'dist'		=> {
+		'COMPRESS'	=>	'gzip -9',
+		'SUFFIX'	=>	'.gz',
+		'DIST_DEFAULT'	=>	'all tardist',
+		},
+);
