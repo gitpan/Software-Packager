@@ -1,6 +1,6 @@
 =head1 NAME
 
- Software::Packager
+Software::Packager - Common software packaging interface
 
 =head1 SYNOPSIS
 
@@ -9,14 +9,19 @@
 
 =head1 DESCRIPTION
 
- The Software Packager module is designed to provide a common interface for
- packaging software on any platform. This module does not do the packaging of 
- the software but is merely a wraper around the various software packaging tools
- already provided with various operating systems.
+The Software Packager module is designed to provide a common interface for
+packaging software on any platform. This module does not do the packaging of 
+the software but is merely a wraper around the various software packaging tools
+already provided with various operating systems.
 
- This module provides the base API and sets default values common to the various
- software packaging methods.
+This module provides the base API and sets default values common to the various
+software packaging methods.
 
+=head1 EXTENDING Software::Packager
+
+To extend the Software::Packager suite all that is required is to create a
+module that the wraps the desired software packaging system.
+ 
 =cut
 
 package		Software::Packager;
@@ -31,10 +36,11 @@ use Software::Packager::Object;
 
 ####################
 # Variables
-our @ISA = qw();
-our @EXPORT = qw();
-our @EXPORT_OK = qw();
-our $VERSION = 0.05;
+use vars qw(@ISA @EXPORT @EXPORT_OK $VERSION);
+@ISA = qw();
+@EXPORT = qw();
+@EXPORT_OK = qw();
+$VERSION = 0.07;
 
 ####################
 # Functions
@@ -49,11 +55,11 @@ our $VERSION = 0.05;
 
  my $packager = new Software::Packager();
  or
- my $packager = new Software::Packager(tar);
+ my $packager = new Software::Packager('tar');
 
- This function creates and returns a new Packager object appropriate for the 
- current platform. Optionally the packager type can be passed and the
- appropriate software packager will be returned.
+This function creates and returns a new Packager object appropriate for the 
+current platform. Optionally the packager type can be passed and the
+appropriate software packager will be returned.
 
 =cut
 sub new
@@ -109,22 +115,25 @@ sub new
  $packager->version(1.2.3.4.5.6);
  my $version = $packager->version();
 
- This function sets the version for the package to the passed value. If no value
- is passed then the packager version is returned.
- The version passed must be a number seperated by periods "." and contain at
- least three parts "1.2.3". since some software packaging products require or
- can handle longer version numbers the default is for a six part version number
- "1.2.3.4.5.6".
- The version will be set to the value you pass, however not all software 
- packaging products need this many fields or can handle them, so the version 
- applied to the actual software package will be set to the appropriate lengthed
- value.
- Having said this, as a software package creator, you need to know what version
- is being applied to the package you are creating, right... so after you set the
- version check what the version will be set to by calling the version method
- without any arguments to see what is returned.
+This function sets the version for the package to the passed value. If no value
+is passed then the packager version is returned.
 
- Example: If we are on AIX, which has a four part version we would get...
+The version passed must be a number seperated by periods "." and contain at
+least three parts "1.2.3". since some software packaging products require or
+can handle longer version numbers the default is for a six part version number
+"1.2.3.4.5.6".
+
+The version will be set to the value you pass, however not all software 
+packaging products need this many fields or can handle them, so the version 
+applied to the actual software package will be set to the appropriate lengthed
+value.
+
+Having said this, as a software package creator, you need to know what version
+is being applied to the package you are creating, right... so after you set the
+version check what the version will be set to by calling the version method
+without any arguments to see what is returned.
+
+Example: If we are on AIX, which has a four part version we would get...
 
  $packager->version(10.2.1);
  my $version = $packager->version();
@@ -140,10 +149,10 @@ sub new
  ...
  VERSION: 1.1.0.0
 
- Since AIX requires the first two values to be set the second is set to be 1.
+Since AIX requires the first two values to be set the second is set to be 1.
 
- For full details on version string requirements refer to the operating system
- documentation or the documentation for the desired packaging system.
+For full details on version string requirements refer to the operating system
+documentation or the documentation for the desired packaging system.
 
 =cut
 sub version
@@ -153,11 +162,15 @@ sub version
 
 	if ($value)
 	{
-		$self->{'PACKAGE_VERSION'} = $value if $self->_check_version($value);
+		if ($value !~ /\d/)
+		{
+			warn "Warning: The version specified does not contain any numbers.\n";
+		}
+		$self->{'PACKAGE_VERSION'} = $value;
 	}
 	else
 	{
-		return $self->_version();
+		return $self->{'PACKAGE_VERSION'};
 	}
 }
 
@@ -169,12 +182,13 @@ sub version
  $packager->package_name("Somename");
  my $name = $packager->package_name();
  
- This method sets the package name to the passed value. If no arguments are
- passed the package name is returned.
- Note that some software packaging methods place various limitations on the
- package name. For example on Solaris the package name is limited to 9 Charaters
- while the RedHat Package Manager is very strict about the format of the names
- of the packages it creates.
+This method sets the package name to the passed value. If no arguments are
+passed the package name is returned.
+
+Note that some software packaging methods place various limitations on the
+package name. For example on Solaris the package name is limited to 9 Charaters
+while the RedHat Package Manager is very strict about the format of the names
+of the packages it creates.
 
 =cut
 sub package_name
@@ -188,7 +202,7 @@ sub package_name
 	}
 	else
 	{
-		return $self->_package_name();
+		return $self->{'PACKAGE_NAME'};
 	}
 }
 
@@ -200,9 +214,9 @@ sub package_name
  $packager->program_name('Software Packager');
  my $program_name = $packager->program_name();
 
- This method is used to set the name of the program that the package is
- installing. This may in some cases be the same as the package name but that is 
- not required.
+This method is used to set the name of the program that the package is
+installing. This may in some cases be the same as the package name but that is 
+not required.
 
 =cut
 sub program_name
@@ -216,7 +230,7 @@ sub program_name
 	}
 	else
 	{
-		return $self->_program_name();
+		return $self->{'PROGRAM_NAME'};
 	}
 }
 
@@ -228,13 +242,14 @@ sub program_name
  $packager->description("This is the description.");
  my $description = $packager->description();
  
- The description method sets the package description to the passed value. If no
- arguments are passed the package description is returned.
- It is important to note that some installation package methods limit the length
- of the description. Therefore it is advisable to check what the description
- will be set to by calling the method without any arguments.
+The description method sets the package description to the passed value. If no
+arguments are passed the package description is returned.
+It is important to note that some installation package methods limit the length
+of the description. Therefore it is advisable to check what the description
+will be set to by calling the method without any arguments.
 
- Example: 
+Example: 
+
  $packager->description("This is a short message.");
  my $description = $packager->descriotion();
  print "DESCRIPTION: $description\n";
@@ -253,7 +268,44 @@ sub description
 	}
 	else
 	{
-		return $self->_description();
+		return $self->{'DESCRIPTION'};
+	}
+}
+
+################################################################################
+# Function:	short_description()
+
+=head2 B<short_description()>
+
+ $packager->short_description("This is a short description.");
+ my $description = $packager->short_description();
+ 
+The short description is typically a single line that describes the package
+It is important to note that some installation package methods limit the length
+of the description. Therefore it is advisable to check what the description
+will be set to by calling the method without any arguments.
+
+Example: 
+
+ $packager->short_description("This is a short message.");
+ my $short_description = $packager->short_descriotion();
+ print "DESCRIPTION: $short_description\n";
+ ...
+ DESCRIPTION: This is a short message.
+
+=cut
+sub short_description
+{
+	my $self = shift;
+	my $value = shift;
+
+	if ($value)
+	{
+		$self->{'SHORT_DESCRIPTION'} = $value;
+	}
+	else
+	{
+		return $self->{'SHORT_DESCRIPTION'};
 	}
 }
 
@@ -265,11 +317,11 @@ sub description
  $packager->output_dir("/home/software/packages");
  my $output_directory = $packager->output_dir();
 
- The output_dir method sets the directory where the final installation package
- will be placed.
- The output directory can be set by passing the desired directory to the method.
- the current outout directory can be checked by calling the method without any
- arguments.
+The output_dir method sets the directory where the final installation package
+will be placed.
+The output directory can be set by passing the desired directory to the method.
+the current outout directory can be checked by calling the method without any
+arguments.
 
 =cut
 sub output_dir
@@ -295,10 +347,9 @@ sub output_dir
  $packager->category("Applications");
  my $category = $packager->category();
  
- This method returns or sets the category for the package.
- Not all packaging systems support categories and so this will only be set where
- possible.
- This functionality is fairly common and is here to provide a standard API.
+This method returns or sets the category for the package.
+Not all packaging systems support categories and so this will only be set where
+possible.
 
 =cut
 sub category
@@ -312,7 +363,7 @@ sub category
 	}
 	else
 	{
-	return $self->_category();
+		return $self->{'CATEGORY'};
 	}
 }
 
@@ -324,13 +375,14 @@ sub category
  $packager->architecture("sparc");
  my $arch = $packager->architecture();
 
- This method sets the architecture for the package to the passed value. If no
- argument is passed then the current architecture is returned.
- The default value is the name given the current architecture by the current
- packaging system.
- Not all packaging systems care about architectures and so this will only be
- used where it is required.
- This functionality is fairly common and is here to provide a standard API.
+This method sets the architecture for the package to the passed value. If no
+argument is passed then the current architecture is returned.
+
+The default value is the name given the current architecture by the current
+packaging system.
+
+Not all packaging systems care about architectures and so this will only be
+used where it is required.
 
 =cut
 sub architecture
@@ -344,7 +396,7 @@ sub architecture
 	}
 	else
 	{
-            return $self->_architecture();
+            return $self->{'ARCHITECTURE'};
 	}
 }
 
@@ -359,20 +411,20 @@ sub architecture
     'DESTINATION' => '/usr/local/file1',
     'USER' => 'joe',
     'GROUP' => 'staff',
-    'mode' => '0750',
+    'MODE' => '0750',
     );
  $packager->add_item(%object_data);
 
- The add_item method is used to add objects to the software package.  By default
- each object added to the software package must have a unique installation 
- destination, though some packaging systems allow many objects to have the same 
- installation location; with the decision of which object to install happening
- at install time. This ability is not common to all software packaging systems
- and thus is only available for systems that support this ability.
+The add_item method is used to add objects to the software package.  By default
+each object added to the software package must have a unique installation 
+destination, though some packaging systems allow many objects to have the same 
+installation location; with the decision of which object to install happening
+at install time. This ability is not common to all software packaging systems
+and thus is only available for systems that support this ability.
 
- The add_item method has some mandatory arguments which are described in the 
- module Software::Packager::Object. The documentation for this module should be
- consulted if a more detailed explanation of these arguments is required.
+The add_item method has some mandatory arguments which are described in the 
+module Software::Packager::Object. The documentation for this module should be
+consulted if a more detailed explanation of these arguments is required.
  
  Required arguments:
  TYPE		The type can be File, Softlink, Hardlink or Directory.
@@ -412,12 +464,11 @@ sub add_item
  $packager->prerequisites('/usr/bin/perl');
  $icon = $packager->prerequisites();
  
- This function returns or sets the prerequisites for this package. since 
- prerequisites can be handled in so many ways  it is best to see the 
- documentation in the various packaging system modules.
- Not all packaging systems can or do use prerequisites and so they will only
- be used where they are supported.
- This functionality is fairly common and is here to provide a standard API.
+This function returns or sets the prerequisites for this package. since 
+prerequisites can be handled in so many ways  it is best to see the 
+documentation in the various packaging system modules.
+Not all packaging systems can or do use prerequisites and so they will only
+be used where they are supported.
 
 =cut
 sub prerequisites
@@ -427,11 +478,11 @@ sub prerequisites
 
         if ($value)
         {
-            $self->{'PREREQUISITES'} = $value;
+		$self->{'PREREQUISITES'} = $value;
         }
         else
         {
-	    return $self->_prerequisites();
+		return $self->{'PREREQUISITES'};
         }
 }
 
@@ -443,10 +494,9 @@ sub prerequisites
  $packager->icon('/source/icon.png');
  $icon = $packager->icon();
  
- This function returns or sets the icon file name for the package.
- Not all packaging systems use icons and so this will only be used where the use 
- of icons are supported.
- This functionality is fairly common and is here to provide a standard API.
+This function returns or sets the icon file name for the package.
+Not all packaging systems use icons and so this will only be used where the use 
+of icons are supported.
 
 =cut
 sub icon
@@ -472,9 +522,9 @@ sub icon
  $packager->vendor('Gondwanatech');
  my $vendor = $packager->vendor();
 
- This method is used to specify the vendor of the software package.
- This is the name of the company or organisation that is creating the software
- package.
+This method is used to specify the vendor of the software package.
+This is the name of the company or organisation that is creating the software
+package.
 
 =cut
 sub vendor
@@ -484,11 +534,11 @@ sub vendor
 
         if ($value)
         {
-            $self->{'VENDOR'} = $value;
+		$self->{'VENDOR'} = $value;
         }
         else
         {
-            return $self->{'VENDOR'};
+		return $self->{'VENDOR'};
         }
 }
 
@@ -500,10 +550,9 @@ sub vendor
  $packager->email_contact('rbdavison@cpan.org');
  my $email = $packager->email_contact();
  
- This function sets or returns the email address for the package contact.
- Typicaly this will be the person / mail list where help with the software can 
- be sort.
- If you want to grab some glory this is where you can do it!
+This function sets or returns the email address for the package contact.
+Typicaly this will be the person / mail list where help with the software can 
+be sort.
 
 =cut
 sub email_contact
@@ -529,7 +578,7 @@ sub email_contact
  $packager->creator('R Bernard Davison');
  my $creator = $packager->creator();
  
- This set the name of the person who created the software package.
+This set the name of the person who created the software package.
 
 =cut
 sub creator
@@ -555,7 +604,7 @@ sub creator
  $packager->install_dir('/usr/local');
  my $base_dir = $packager->install_dir();
  
- This method sets the base directory for the software to be installed.
+This method sets the base directory for the software to be installed.
  
 =cut
 sub install_dir
@@ -563,9 +612,14 @@ sub install_dir
 	my $self = shift;
 	my $value = shift;
 
-	return $self->{'BASEDIR'} unless $value;
-	$self->{'BASEDIR'} = $value;
-	return 1;
+	if ($value)
+	{
+		$self->{'BASEDIR'} = $value;
+	}
+	else
+	{
+		return $self->{'BASEDIR'};
+	}
 }
 
 ################################################################################
@@ -576,10 +630,10 @@ sub install_dir
  $packager->tmp_dir('/tmp');
  my $tmp_dir = $packager->tmp_dir();
 
- This method returns or sets the temporary build directory to be used for
- package creation. This directory is used for any preparation that is needed to 
- make the package. This directory should be on a partition with sufficient disk
- space to hold all temporary objects for the package creation process.
+This method returns or sets the temporary build directory to be used for
+package creation. This directory is used for any preparation that is needed to 
+make the package. This directory should be on a partition with sufficient disk
+space to hold all temporary objects for the package creation process.
 
 =cut
 sub tmp_dir
@@ -589,11 +643,17 @@ sub tmp_dir
 
         if ($value)
         {
-            $self->{'TMP_BUILD_DIR'} = $value if $self->_check_tmp_dir($value);
+		while (-e $value)
+		{
+			warn "Error: The temporary build directory \"$value\" exists.\n";
+			warn "       appending /tmp to the name ad trying again.\n";
+			$value .= "/tmp";
+		}
+		$self->{'TMP_BUILD_DIR'} = $value;
         }
         else
         {
-            return $self->_tmp_dir();
+            return $self->{'TMP_BUILD_DIR'};
         }
 }
 
@@ -752,15 +812,93 @@ sub license_file
 	my $self = shift;
 	my $value = shift;
 
-	return $self->{'LICENSE_FILE'} unless $value;
-	if ($self->_test_file($value))
+	if ($value)
 	{
-	    $self->{'LICENSE_FILE'} = $value;
-	    return 1;
+		$self->{'LICENSE_FILE'} = $value;
 	}
 	else
 	{
-	    return undef;
+		return $self->{'LICENSE_FILE'};
+	}
+}
+
+################################################################################
+# Function:	copyright()
+
+=head2 B<copyright()>
+
+This method sets the copyright type for the package. This can either be a file 
+that contains the copyright, The copyright type or the copy information itself 
+
+As many packaging systems treat copyright information it is wise to check with
+the various Software::Packager modules to see how they are treated.
+
+=cut
+sub copyright
+{
+	my $self = shift;
+	my $value = shift;
+
+	if ($value)
+	{
+		$self->{'COPYRIGHT'} = $value;
+	}
+	else
+	{
+		return $self->{'COPYRIGHT'};
+	}
+}
+
+################################################################################
+# Function:	reboot_required()
+
+=head2 B<reboot_required()>
+
+$packager->reboot_required(0);
+$packager->reboot_required(1);
+
+This method specifies wether a reboot of the operating system is required after 
+the installation is complete.
+If set to a true value then any package create will request a reboot after 
+installation.
+
+=cut
+sub reboot_required
+{
+	my $self = shift;
+	my $value = shift;
+
+	if ($value)
+	{
+	    $self->{'REBOOT_REQUIRED'} = $value;
+	}
+	else
+	{
+	    return $self->{'REBOOT_REQUIRED'};
+	}
+}
+
+################################################################################
+# Function:	homepage()
+
+=head2 B<homepage()>
+
+This method sets the home page for the package. This is a URL for a web site
+that is for the software being released.
+
+=cut
+sub homepage
+{
+	my $self = shift;
+	my $value = shift;
+
+	if ($value)
+	{
+		$self->{'HOMEPAGE'} = $value;
+	}
+	else
+	{
+		return $self->{'HOMEPAGE'};
 	}
 }
 
@@ -886,190 +1024,20 @@ sub _test_file
 	return undef;
 }
 
-=head1 EXTENDING Software::Packager
-
- To extend the Software::Packager suite all that is required is to create a
- module that the wraps the desired software packaging system.
- 
- It may be necessary to override the following methods.
-
-=cut
-
 ################################################################################
 # Function:     package()
  
 =head2 B<package()>
 
- This method forms part of the base API it should be overriden by sub classes
- of Software::Packager
+This method forms part of the base API it should be overriden by sub classes
+of Software::Packager
 
 =cut
 sub package    
 {       
         my $self = shift;
-	print "The base API for this module has not been implemented.\n";
+	warn "The base API has been called this module must be sub classed.\n";
 }       
-
-################################################################################
-# Function:	_version()
-
-=head2 B<_version()>
-
- This method is used to format the version and return it in the desired format 
- for the current packaging system.
-
-=cut
-sub _version
-{
-	my $self = shift;
-	return $self->{'PACKAGE_VERSION'};
-}
-
-################################################################################
-# Function:	_check_version()
-
-=head2 B<_check_version()>
-
- This method is used to check the format of the version and returns true, if
- there are any problems then it returns undef;
- Test that the format is digits and periods anything else is a no good.
-
-=cut
-sub _check_version
-{
-	my $self = shift;
-	my $value = shift;
-	return undef if $value =~ /\D!\./;
-	return 1;
-}
-
-################################################################################
-# Function:	_category()
-
-=head2 B<_category()>
-
- This method returns the package category in the format required by the current
- packaging system.
-
-=cut
-sub _category
-{
-	my $self = shift;
-	return $self->{'CATEGORY'};
-}
-
-################################################################################
-# Function:	_architecture()
-
-=head2 B<_architecture()>
-
- This method returns the architecture in the format required for the current
- packaging system.
-
-=cut
-sub _architecture
-{
-	my $self = shift;
-	return $self->{'ARCHITECTURE'};
-}
-
-################################################################################
-# Function:	_package_name()
-
-=head2 B<_package_name()>
-
- This method is used to format the package name and return it in the format for 
- the current packaging system.
-
-=cut
-sub _package_name
-{
-	my $self = shift;
-	return $self->{'PACKAGE_NAME'};
-}
-
-################################################################################
-# Function:	_description()
-
-=head2 B<_description()>
-
- This method is used to format the description and return it in the required
- format for the current packaging system.
- i.e. The description may need to be truncated or prefixed.
-
-=cut
-sub _description
-{
-	my $self = shift;
-	return $self->{'DESCRIPTION'};
-}
-
-################################################################################
-# Function:	_prerequisites()
-
-=head2 B<_prerequisites()>
-
- This method is used to format the prerequisites and return it in the required
- format for the current packaging system.
- i.e. The prerequisites may need to be returned as a comma seperated list or as a
- perl hash or some unknown number or other formats.
-
-=cut
-sub _prerequisites
-{
-	my $self = shift;
-	return $self->{'PREREQUISITES'};
-}
-
-################################################################################
-# Function:	_tmp_dir()
-
-=head2 B<_tmp_dir()>
-
- This method is used to format the temporary build directory and return it.
-
-=cut
-sub _tmp_dir
-{
-	my $self = shift;
-	return $self->{'TMP_BUILD_DIR'};
-}
-
-################################################################################
-# Function:	_program_name()
-
-=head2 B<_program_name()>
-
- This method is used to format the program name and return it.
-
-=cut
-sub _program_name
-{
-	my $self = shift;
-	return $self->{'PROGRAM_NAME'};
-}
-
-################################################################################
-# Function:	_check_tmp_dir()
-
-=head2 B<_check_tmp_dir()>
-
- This method is used to check the temporary build directory. 
- there are any problems then it returns undef;
- Test if the temporary build directory exist's if so return undef;
-
-=cut
-sub _check_tmp_dir
-{
-	my $self = shift;
-	my $value = shift;
-	if (-e $value)
-	{
-		warn "Error: The temporary build directory \"$value\" exists. It is not possible to continue. Please remove this directory and try again.\n";
-		return undef;
-	}
-	return 1;
-}
 
 1;
 __END__

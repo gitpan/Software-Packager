@@ -1,3 +1,14 @@
+Release 0.07
+	Rationalised the API a little
+	The API is still under development but is starting to get more stable
+	as I get more packaging systems developed and the requirements become
+	more obvious.
+
+Release 0.06
+	Added an example script.
+	extended the API with the following methods
+	reboot_required
+
 Release 0.05
         Split Software-Packager into a base module and modules for each platform
 

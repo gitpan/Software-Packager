@@ -3,18 +3,10 @@ Software::Packager
 
 Software::Packager::Object
 	This should be okay but I'd like to improve the mode method some what.
-	At present you must pass an octal value or face teh consequences.
+	At present you must pass an octal value or face the consequences.
 
 Software::Packager::Tar
 	creates tar files okay but if you do a tar -tvf on the archive it gives
 	direcory checksum errors.
 	Test script may need improving.
-
-Software::Packager::Perl
-	This module needs to have all the implementation done.
-	Test script needs to be written
-
-Software::Packager::Zip
-	This module needs to have all the implementation done.
-	Test script needs to be written
 

@@ -33,14 +33,11 @@ use Software::Packager;
 
 ####################
 # Variables
-our @ISA = qw( Software::Packager );
-our @EXPORT = qw();
-our @EXPORT_OK = qw();
-our $VERSION = 0.01;
-
-my $m_tar;
-my $m_tmp_dir;
-my $m_package_build_dir;
+use vars qw(@ISA @EXPORT @EXPORT_OK $VERSION);
+@ISA = qw( Software::Packager );
+@EXPORT = qw();
+@EXPORT_OK = qw();
+$VERSION = 0.04;
 
 ####################
 # Functions
@@ -62,6 +59,35 @@ sub new
 }
 
 ################################################################################
+# Function:	package_name()
+
+=head2 B<package_name()>
+
+This method is used to format the package name and return it in the format
+required for tar packages.
+This method overrides the package_name method of Software::Packager.
+
+=cut
+sub package_name
+{
+	my $self = shift;
+	my $name = shift;
+
+	if ($name)
+	{
+		$self->{'PACKAGE_NAME'} = $name;
+		return $self->{'PACKAGE_NAME'};
+	}
+	else
+	{
+		my $package_name = $self->{'PACKAGE_NAME'};
+		$package_name .= "-" . $self->version();
+
+		return $package_name;
+	}
+}
+
+################################################################################
 # Function:	package()
 
 =head2 B<package()>
@@ -74,8 +100,6 @@ sub new
 sub package
 {
 	my $self = shift;
-	$m_tmp_dir = $self->tmp_dir();
-	$m_package_build_dir .= "$m_tmp_dir/" . $self->package_name();
 
 	return undef unless $self->setup();
 	return undef unless $self->create_package();
@@ -96,14 +120,16 @@ sub setup
 {
 	my $self = shift;
 	my $cwd = getcwd();
+	my $tmp_dir = $self->tmp_dir();
+	my $package_build_dir = "$tmp_dir/" . $self->package_name();
 
 	# process directories
-	unless (-d $m_package_build_dir)
+	unless (-d $package_build_dir)
 	{
-		mkpath($m_package_build_dir, 1, 0755) or
-			warn "Error: Problems were encountered creating directory \"$m_package_build_dir\": $!\n";
+		mkpath($package_build_dir, 0, 0755) or
+			warn "Error: Problems were encountered creating directory \"$package_build_dir\": $!\n";
 	}
-	chdir $m_package_build_dir;
+	chdir $package_build_dir;
 
 	# process directories
 	my @directories = $self->get_directory_objects();
@@ -115,7 +141,7 @@ sub setup
 		my $mode = $object->mode();
 		unless (-d $destination)
 		{
-			mkpath($destination, 1, $mode) or
+			mkpath($destination, 0, $mode) or
 				warn "Error: Problems were encountered creating directory \"$destination\": $!\n";
 		}
 	}
@@ -129,7 +155,7 @@ sub setup
 		my $dir = dirname($destination);
 		unless (-d $dir)
 		{
-			mkpath($dir, 1, 0755) or
+			mkpath($dir, 0, 0755) or
 				warn "Error: Problems were encountered creating directory \"$dir\": $!\n";
 		}
 		copy($source, $destination) or
@@ -184,23 +210,24 @@ sub setup
 sub create_package
 {
 	my $self = shift;
+	my $tmp_dir = $self->tmp_dir();
 	my $tar_file = $self->output_dir();
 	$tar_file .= "/" . $self->package_name();
 	$tar_file .= ".tar";
 
 	# create the object
 	my $cwd = getcwd();
-	chdir $m_tmp_dir;
-	$m_tar = new Archive::Tar();
+	chdir $tmp_dir;
+	my $tar = new Archive::Tar();
 
 	# Add everything to the archive.
 	my @files;
 	find  sub {push @files, $File::Find::name;}, $self->package_name();
-	$m_tar->add_files(@files) or 
-		warn "Error: Problems were encountered creating the archive: $!\n", $m_tar->error(), "\n";
+	$tar->add_files(@files) or 
+		warn "Error: Problems were encountered creating the archive: $!\n", $tar->error(), "\n";
 
 	# write the sucker.
-	$m_tar->write($tar_file);
+	$tar->write($tar_file);
 	chdir $cwd;
 
 	return 1;
@@ -215,30 +242,12 @@ sub create_package
 sub cleanup
 {
 	my $self = shift;
+	my $tmp_dir = $self->tmp_dir();
 
 	# there has to be a better way to to this!
-	return undef unless system("chmod -R 0777 $m_tmp_dir") eq 0;
-	rmtree($m_tmp_dir, 1, 1);
+	return undef unless system("chmod -R 0777 $tmp_dir") eq 0;
+	rmtree($tmp_dir, 0, 0);
 	return 1;
-}
-
-################################################################################
-# Function:	_package_name()
-
-=head2 B<_package_name()>
-
- This method is used to format the package name and return it in the format
- required for tar packages.
- This method overrides the _package_name method of Software::Packager.
-
-=cut
-sub _package_name
-{
-	my $self = shift;
-	my $package_name = $self->{'PACKAGE_NAME'};
-	$package_name .= "-" . $self->version();
-
-	return $package_name;
 }
 
 1;

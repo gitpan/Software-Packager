@@ -20,7 +20,8 @@
  package Foo;
 
  use Software::Packager::Object;
- our @ISA = qw( Software::Packager::Object );
+ use vars qw(@ISA);
+ @ISA = qw( Software::Packager::Object );
 
  ########################
  # _check_data we don't care about anything other that DESTINATION and FOO_DATA;
@@ -58,10 +59,11 @@ use strict;
 
 ####################
 # Variables
-our @ISA = qw();
-our @EXPORT = qw();
-our @EXPORT_OK = qw();
-our $VERSION = 0.03;
+use vars qw(@ISA @EXPORT @EXPORT_OK $VERSION);
+@ISA = qw();
+@EXPORT = qw();
+@EXPORT_OK = qw();
+$VERSION = 0.03;
 
 ####################
 # Functions

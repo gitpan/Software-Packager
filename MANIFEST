@@ -7,6 +7,6 @@ MANIFEST
 lib/Software/Packager.pm
 lib/Software/Packager/Object.pm
 lib/Software/Packager/Tar.pm
-lib/Software/Packager/Perl.pm
 t/01_initialise.t
 t/02_tar.t
+example/example.pl

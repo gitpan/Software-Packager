@@ -9,4 +9,7 @@ WriteMakefile(
 	'PREREQ_PM'	=> {
 		'Archive::Tar'	=>	'0.22',
 		},
+	'clean'		=> {
+		'FILES'	=> 'TarTestPackage-1.0.0.tar t/tar_tmp_build_dir',
+		},
 );
